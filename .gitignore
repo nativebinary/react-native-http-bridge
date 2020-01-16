@@ -46,3 +46,5 @@ android/.gradle
 android/build
 local.properties
 android.iml
+android/.project
+android/.settings/org.eclipse.buildship.core.prefs

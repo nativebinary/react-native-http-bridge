@@ -6,11 +6,19 @@ import fi.iki.elonen.NanoHTTPD.Response.Status;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableArray;
+import com.facebook.react.bridge.WritableNativeMap;
+import com.facebook.react.bridge.WritableNativeArray;
+
+
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
+import java.io.ByteArrayInputStream;
 import java.util.Map;
 import java.util.Set;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -66,6 +74,17 @@ public class Server extends NanoHTTPD {
         responses.put(requestId, newFixedLengthResponse(Status.lookup(code), type, body));
     }
 
+    public void respondBytes(String requestId, int code, String type, ReadableMap headers, byte[] bytes) {
+        Response response = newFixedLengthResponse(Status.lookup(code), type, new ByteArrayInputStream(bytes), bytes.length);
+        ReadableMapKeySetIterator readableMapKeySetIterator = headers.keySetIterator();
+        while (readableMapKeySetIterator.hasNextKey()) {
+            String key = readableMapKeySetIterator.nextKey();
+            String value = headers.getString(key);
+            response.addHeader(key, value);
+        }
+        responses.put(requestId, response);
+    }
+    
     private WritableMap toWritableMap(Map<String, Object> map) {
         WritableNativeMap result = new WritableNativeMap();
 
@@ -129,8 +148,14 @@ public class Server extends NanoHTTPD {
         request.putString("requestId", requestId);
         request.putString("type", method.name());
         request.putString("url", session.getUri());
-        request.putMap("headers", toWritableMap(session.getHeaders()));
-        request.putMap("parameters", toWritableMap(session.getParameters()));
+        HashMap<String, Object> mapHeaders = new HashMap<String, Object>();
+        for (Map.Entry<String, String> entry : session.getHeaders().entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            mapHeaders.put(key, value);
+        }
+        request.putMap("headers", toWritableMap(mapHeaders));
+        // request.putMap("parameters", toWritableMap(session.getParameters()));
         
         Map<String, String> files = new HashMap<>();
         session.parseBody(files);
