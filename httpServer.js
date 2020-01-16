@@ -15,6 +15,7 @@ module.exports = {
 
         Server.start(port, serviceName);
         DeviceEventEmitter.addListener('httpServerResponseReceived', callback);
+        console.log('server started');
     },
 
     stop: function () {
