@@ -66,13 +66,71 @@ public class Server extends NanoHTTPD {
         responses.put(requestId, newFixedLengthResponse(Status.lookup(code), type, body));
     }
 
+    private WritableMap toWritableMap(Map<String, Object> map) {
+        WritableNativeMap result = new WritableNativeMap();
+
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            if (value == null) {
+                result.putNull(key);
+            } else if (value instanceof Map) {
+                //noinspection unchecked,rawtypes
+                result.putMap(key, toWritableMap((Map) value));
+            } else if (value instanceof List) {
+                //noinspection unchecked,rawtypes
+                result.putArray(key, toWritableArray((List) value));
+            } else if (value instanceof Boolean) {
+                result.putBoolean(key, (Boolean) value);
+            } else if (value instanceof Integer) {
+                result.putInt(key, (Integer) value);
+            } else if (value instanceof String) {
+                result.putString(key, (String) value);
+            } else if (value instanceof Double) {
+                result.putDouble(key, (Double) value);
+            } else {
+                Log.e(TAG, "Could not convert object " + value.toString());
+            }
+        }
+
+        return result;
+    }
+    
+    private WritableArray toWritableArray(List<Object> array) {
+        WritableNativeArray result = new WritableNativeArray();
+
+        for (Object value : array) {
+            if (value == null) {
+                result.pushNull();
+            } else if (value instanceof Map) {
+                //noinspection unchecked,rawtypes
+                result.pushMap(toWritableMap((Map) value));
+            } else if (value instanceof List) {
+                //noinspection unchecked,rawtypes
+                result.pushArray(toWritableArray((List) value));
+            } else if (value instanceof Boolean) {
+                result.pushBoolean((Boolean) value);
+            } else if (value instanceof Integer) {
+                result.pushInt((Integer) value);
+            } else if (value instanceof String) {
+                result.pushString((String) value);
+            } else if (value instanceof Double) {
+                result.pushDouble((Double) value);
+            } else {
+                Log.e(TAG, "Could not convert object " + value.toString());
+            }
+        }
+
+        return result;
+    }
     private WritableMap fillRequestMap(IHTTPSession session, String requestId) throws Exception {
         Method method = session.getMethod();
         WritableMap request = Arguments.createMap();
         request.putString("requestId", requestId);
         request.putString("type", method.name());
         request.putString("url", session.getUri());
-        request.putMap("headers", session.getHeaders());
+        request.putMap("headers", toWritableMap(session.getHeaders()));
+        request.putMap("parameters", toWritableMap(session.getParameters()));
         
         Map<String, String> files = new HashMap<>();
         session.parseBody(files);
